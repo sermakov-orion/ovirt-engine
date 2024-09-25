@@ -22,6 +22,7 @@ import org.ovirt.engine.core.common.businessentities.storage.ImageTransferPhase;
 import org.ovirt.engine.core.common.businessentities.storage.TransferClientType;
 import org.ovirt.engine.core.common.businessentities.storage.TransferType;
 import org.ovirt.engine.core.common.businessentities.storage.VolumeFormat;
+import org.ovirt.engine.core.common.businessentities.storage.VolumeType;
 import org.ovirt.engine.core.common.queries.IdQueryParameters;
 import org.ovirt.engine.core.common.queries.QueryReturnValue;
 import org.ovirt.engine.core.common.queries.QueryType;
@@ -371,12 +372,18 @@ public class UploadImageModel extends Model implements ICommandTarget {
             DiskImage diskImage = (DiskImage) getDiskModel().getDisk();
             diskImage.setSize(getVirtualSize());
             diskImage.setActualSizeInBytes(imageInfoModel.getActualSize());
-            diskImage.setVolumeFormat(diskModel.getIsIncrementalBackup().getEntity() ?
-                    VolumeFormat.COW : getImageInfoModel().getFormat());
-            diskImage.setVolumeType(AsyncDataProvider.getInstance().getVolumeType(
-                    diskImage.getVolumeFormat(),
-                    getDiskModel().getStorageDomain().getSelectedItem().getStorageType(), null, null));
-            diskImage.setContentType(getImageInfoModel().getContentType());
+            VolumeFormat volumeFormat = diskModel.getIsIncrementalBackup().getEntity() ?
+                    VolumeFormat.COW : getImageInfoModel().getFormat();
+            diskImage.setVolumeFormat(volumeFormat);
+            DiskContentType contentType = getImageInfoModel().getContentType();
+            if (volumeFormat != VolumeFormat.COW && contentType == DiskContentType.ISO) {
+                diskImage.setVolumeType(VolumeType.Preallocated);
+            } else {
+                diskImage.setVolumeType(AsyncDataProvider.getInstance().getVolumeType(
+                        volumeFormat,
+                        getDiskModel().getStorageDomain().getSelectedItem().getStorageType(), null, null));
+            }
+            diskImage.setContentType(contentType);
             return true;
         } else {
             setIsValid(false);
